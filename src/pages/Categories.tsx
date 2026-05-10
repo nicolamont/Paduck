@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
-import { Plus, Trash2, Pencil, Check, X } from 'lucide-react'
+import { Plus, Trash2, Pencil, Check} from 'lucide-react'
 import type { Categoria } from '../types'
 
 const COLORI = ['#f97316','#3b82f6','#a855f7','#22c55e','#eab308','#ec4899','#6b7280','#ef4444','#14b8a6']
@@ -87,11 +87,6 @@ function CategoryRow({ cat, onDelete }: { cat: Categoria; onDelete: (cat: Catego
   async function handleSave() {
     if (!form.nome.trim()) return
     await db.categorie.update(cat.id!, form)
-    setEditing(false)
-  }
-
-  function handleCancel() {
-    setForm({ nome: cat.nome, icona: cat.icona, colore: cat.colore })
     setEditing(false)
   }
 
