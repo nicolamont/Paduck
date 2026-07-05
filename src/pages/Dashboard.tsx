@@ -168,6 +168,10 @@ export default function Dashboard() {
                 return (
                   <div key={t.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: cat?.colore ?? '#6b7280' }}
+                      />
                       <span>{cat?.icona ?? '📦'}</span>
                       <span className="text-sm">{t.nota || cat?.nome}</span>
                     </div>

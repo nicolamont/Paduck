@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
-import { Plus, Trash2, Pencil, Check, X } from 'lucide-react'
+import { Plus, Trash2, Pencil, Check, X, Search } from 'lucide-react'
 import AddExpenseModal from '../components/AddExpenseModal'
 import ExportImport from '../components/ExportImport'
 import type { Transazione, Categoria } from '../types'
@@ -11,6 +11,32 @@ interface ExpenseRowProps {
   cat: Categoria | undefined
   categorie: Categoria[]
   onDelete: (id: number) => void
+}
+
+function CategoryBadge({ cat }: { cat: Categoria | undefined }) {
+  const [show, setShow] = useState(false)
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShow(s => !s)}
+        className="text-2xl leading-none"
+      >
+        {cat?.icona ?? '📦'}
+      </button>
+      {show && (
+        <>
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setShow(false)}
+          />
+          <div className="absolute left-0 top-8 z-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white whitespace-nowrap shadow-lg">
+            {cat?.icona} {cat?.nome ?? 'Sconosciuta'}
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 
 function ExpenseRow({ t, cat, categorie, onDelete }: ExpenseRowProps) {
@@ -101,7 +127,7 @@ function ExpenseRow({ t, cat, categorie, onDelete }: ExpenseRowProps) {
   return (
     <div className="flex items-center justify-between bg-slate-900 rounded-xl px-4 py-3 border border-slate-800">
       <div className="flex items-center gap-3">
-        <span className="text-2xl">{cat?.icona ?? '📦'}</span>
+        <CategoryBadge cat={cat} />
         <div>
           <p className="text-sm font-medium">{t.nota || cat?.nome}</p>
           <p className="text-xs text-slate-400">{new Date(t.data).toLocaleDateString('it')}</p>
@@ -129,6 +155,7 @@ function ExpenseRow({ t, cat, categorie, onDelete }: ExpenseRowProps) {
 export default function Expenses() {
   const [open, setOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [query, setQuery] = useState('')
 
   const transazioni = useLiveQuery(() =>
     db.transazioni.orderBy('data').reverse().toArray()
@@ -139,6 +166,17 @@ export default function Expenses() {
 
   const catMap = Object.fromEntries(categorie.map(c => [c.id!, c]))
 
+  // Ricerca — filtra per nota o nome categoria
+  const q = query.trim().toLowerCase()
+  const filtered = q
+    ? transazioni.filter(t => {
+        const nota = t.nota?.toLowerCase() ?? ''
+        const cat = catMap[t.categoria_id]?.nome.toLowerCase() ?? ''
+        return nota.includes(q) || cat.includes(q)
+      })
+    : null // null = nessuna ricerca attiva, mostra la vista normale per mese
+
+  // Raggruppamento per mese (solo quando non c'è ricerca)
   const grouped = transazioni.reduce<Record<string, Transazione[]>>((acc, t) => {
     const d = new Date(t.data)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -172,29 +210,75 @@ export default function Expenses() {
         </button>
       </div>
 
+      {/* Barra di ricerca */}
+      <div className="relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        <input
+          type="text"
+          placeholder="Cerca per nota o categoria..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-9 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
       <ExportImport />
 
-      {transazioni.length === 0 && (
-        <p className="text-slate-500 text-center py-12">Nessuna spesa ancora.</p>
+      {/* Vista ricerca */}
+      {filtered !== null && (
+        <div className="space-y-2">
+          {filtered.length === 0 ? (
+            <p className="text-slate-500 text-center py-12">Nessuna spesa trovata per "{query}".</p>
+          ) : (
+            <>
+              <p className="text-xs text-slate-500">{filtered.length} risultat{filtered.length === 1 ? 'o' : 'i'} per "{query}"</p>
+              {filtered.map(t => (
+                <ExpenseRow
+                  key={t.id}
+                  t={t}
+                  cat={catMap[t.categoria_id]}
+                  categorie={categorie}
+                  onDelete={setDeleteConfirm}
+                />
+              ))}
+            </>
+          )}
+        </div>
       )}
 
-      {mesiOrdinati.map(key => (
-        <div key={key} className="space-y-2">
-          <div className="flex items-center justify-between py-2 border-b border-slate-800">
-            <span className="text-sm font-semibold text-slate-300">{labelMese(key)}</span>
-            <span className="text-sm text-rose-400 font-medium">- € {totMese(grouped[key]).toFixed(2)}</span>
-          </div>
-          {grouped[key].map(t => (
-            <ExpenseRow
-              key={t.id}
-              t={t}
-              cat={catMap[t.categoria_id]}
-              categorie={categorie}
-              onDelete={setDeleteConfirm}
-            />
+      {/* Vista normale per mese */}
+      {filtered === null && (
+        <>
+          {transazioni.length === 0 && (
+            <p className="text-slate-500 text-center py-12">Nessuna spesa ancora.</p>
+          )}
+          {mesiOrdinati.map(key => (
+            <div key={key} className="space-y-2">
+              <div className="flex items-center justify-between py-2 border-b border-slate-800">
+                <span className="text-sm font-semibold text-slate-300">{labelMese(key)}</span>
+                <span className="text-sm text-rose-400 font-medium">- € {totMese(grouped[key]).toFixed(2)}</span>
+              </div>
+              {grouped[key].map(t => (
+                <ExpenseRow
+                  key={t.id}
+                  t={t}
+                  cat={catMap[t.categoria_id]}
+                  categorie={categorie}
+                  onDelete={setDeleteConfirm}
+                />
+              ))}
+            </div>
           ))}
-        </div>
-      ))}
+        </>
+      )}
 
       <AddExpenseModal open={open} onClose={() => setOpen(false)} categorie={categorie} />
 
