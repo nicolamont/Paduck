@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Expenses from './pages/Expenses'
 import Categories from './pages/Categories'
+import OnboardingModal from './components/OnboardingModal'
 
 type Page = 'dashboard' | 'expenses' | 'categories'
 
@@ -18,6 +19,7 @@ export default function App() {
   return (
     <Layout page={page} setPage={setPage}>
       {pages[page]}
+      <OnboardingModal />
     </Layout>
   )
 }
