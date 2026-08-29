@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Info, X } from 'lucide-react'
+import { Info } from 'lucide-react'
 
 export default function OnboardingModal() {
   const [visible, setVisible] = useState(() => {
